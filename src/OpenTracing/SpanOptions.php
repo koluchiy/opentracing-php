@@ -2,18 +2,13 @@
 
 namespace OpenTracing;
 
+use OpenTracing\Exceptions\InvalidReferencesSet;
 use OpenTracing\Exceptions\InvalidSpanOption;
-use OpenTracing\SpanReference\ChildOf;
 
 final class SpanOptions
 {
     /**
-     * @var ChildOf
-     */
-    private $childOf;
-
-    /**
-     * @var SpanReference[]
+     * @var Reference[]
      */
     private $references = [];
 
@@ -27,24 +22,37 @@ final class SpanOptions
      */
     private $startTime;
 
+    /**
+     * @param array|mixed[] $options
+     * @throws InvalidSpanOption when one of the options is invalid
+     * @throws InvalidReferencesSet when there are inconsistencies about the references
+     * @return SpanOptions
+     */
     public static function create(array $options)
     {
         $spanOptions = new self();
         
         foreach ($options as $key => $value) {
             switch ($key) {
-                case 'child_of':
-                    $spanOptions->childOf = self::buildChildOf($value);
-                    break;
-
                 case 'references':
-                    $spanOptions->references = self::buildReferencesArray($value);
+                    if ($value instanceof Reference) {
+                        $spanOptions->references = [$value];
+                    } elseif (is_array($value)) {
+                        $spanOptions->references = self::buildReferences($value);
+                    } else {
+                        throw InvalidSpanOption::forInvalidReferenceSet($value);
+                    }
+
                     break;
 
                 case 'tags':
+                    if (!is_array($value)) {
+                        throw InvalidSpanOption::forInvalidTags($value);
+                    }
+
                     foreach ($value as $tag => $tagValue) {
                         if ($tag !== (string) $tag) {
-                            throw InvalidSpanOption::invalidTag($tag);
+                            throw InvalidSpanOption::forInvalidTag($tag);
                         }
 
                         $spanOptions->tags[$tag] = $tagValue;
@@ -53,43 +61,28 @@ final class SpanOptions
 
                 case 'start_time':
                     if (is_scalar($value) && !is_numeric($value)) {
-                        throw InvalidSpanOption::invalidStartTime();
+                        throw InvalidSpanOption::forInvalidStartTime();
                     }
 
                     $spanOptions->startTime = $value;
                     break;
 
                 default:
-                    throw InvalidSpanOption::unknownOption($key);
+                    throw InvalidSpanOption::forUnknownOption($key);
                     break;
             }
-        }
-
-        if (count($spanOptions->references) > 0 && $spanOptions->childOf !== null) {
-            throw InvalidSpanOption::includesBothChildOfAndReferences();
         }
 
         return $spanOptions;
     }
 
-    private static function buildChildOf($value)
-    {
-        if ($value instanceof Span) {
-            return ChildOf::fromContext($value->getContext());
-        } elseif ($value instanceof SpanContext) {
-            return ChildOf::fromContext($value);
-        }
-
-        throw InvalidSpanOption::invalidChildOf($value);
-    }
-
-    private static function buildReferencesArray(array $value)
+    private static function buildReferences(array $referencesArray)
     {
         $references = [];
 
-        foreach ($value as $reference) {
-            if (!($reference instanceof SpanReference)) {
-                throw InvalidSpanOption::invalidReference($reference);
+        foreach ($referencesArray as $reference) {
+            if (!($reference instanceof Reference)) {
+                throw InvalidSpanOption::forInvalidReference($reference);
             }
 
             $references[] = $reference;
@@ -99,15 +92,7 @@ final class SpanOptions
     }
 
     /**
-     * @return ChildOf
-     */
-    public function getChildOf()
-    {
-        return $this->childOf;
-    }
-
-    /**
-     * @return SpanReference[]
+     * @return Reference[]
      */
     public function getReferences()
     {

@@ -15,7 +15,7 @@ final class NoopTracer implements Tracer
 
     public function startSpan(
         $operationName,
-        SpanReference $parentReference = null,
+        Reference $parentReference = null,
         $startTimestamp = null,
         array $tags = []
     ) {

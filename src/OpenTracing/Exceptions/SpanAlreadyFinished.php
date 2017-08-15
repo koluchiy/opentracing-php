@@ -16,7 +16,11 @@ use OpenTracing\Span;
  */
 final class SpanAlreadyFinished extends DomainException
 {
-    public static function create(Span $span)
+    /**
+     * @param Span $span
+     * @return SpanAlreadyFinished
+     */
+    public static function forSpan(Span $span)
     {
         return new self(sprintf('Span named %s is already finished.', $span->getOperationName()));
     }

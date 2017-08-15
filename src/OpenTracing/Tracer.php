@@ -26,7 +26,7 @@ interface Tracer
 
     /**
      * @param string $operationName
-     * @param SpanReference|null $parentReference
+     * @param Reference|null $parentReference
      * @param float|int|\DateTimeInterface|null $startTimestamp if passing float or int
      * it should represent the timestamp (including as many decimal places as you need)
      * @param array $tags
@@ -35,7 +35,7 @@ interface Tracer
      */
     public function startSpan(
         $operationName,
-        SpanReference $parentReference = null,
+        Reference $parentReference = null,
         $startTimestamp = null,
         array $tags = []
     );
